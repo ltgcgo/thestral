@@ -1,0 +1,21 @@
+{
+	"params": {
+		"type": "type",
+		"user": "user",
+		"validTill": "to"
+	},
+	"verify": {
+		"secret": "1145141919810",
+		"hash": {
+			"type": "SHA3",
+			"length": 24,
+			"options": {
+				"outputLength": 384
+			}
+		},
+		"map": "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_ "
+	},
+	"types": [
+		"default"
+	]
+}
