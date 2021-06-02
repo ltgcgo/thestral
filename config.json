@@ -13,9 +13,13 @@
 				"outputLength": 384
 			}
 		},
+		"admin": [
+			"pg8TSLsRvXn1fFwh5VFcU1iQ"
+		],
 		"map": "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_ "
 	},
 	"types": [
-		"default"
+		"default",
+		"root"
 	]
 }
