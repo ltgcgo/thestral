@@ -1,19 +1,19 @@
 "use strict";
 
-const svrPort = parseInt(Deno.args[0] || "20810");
+const svrPort = parseInt(Deno.args[0] || "20812");
 const svrHost = Deno.args[1] || "localhost";
 const hardcodedBlocks = ["/config.json", "/access/*"];
 
 // Prepare xConsole
 var xConsole = {};
 xConsole.log = function (text) {
-	console.log(`[INFL - ${(new Date()).toJSON()}] ${text}`);
+	console.log(`[INFL - ${Date.now().toString(16)}] ${text}`);
 };
 xConsole.error = function (text) {
-	console.error(`[ERROR - ${(new Date()).toJSON()}] ${text}`);
+	console.error(`[ERROR - ${Date.now().toString(16)}] ${text}`);
 };
 xConsole.warn = function (text) {
-	console.warn(`[WARN - ${(new Date()).toJSON()}] ${text}`);
+	console.warn(`[WARN - ${Date.now().toString(16)}] ${text}`);
 };
 
 xConsole.log("Loading dependencies...")
@@ -39,7 +39,7 @@ xConsole.log("Preparing configuration...");
 // Config global vars
 var conf = {};
 var useHashAlgo, useHashLength, useHashOptions, useTypes, compiledGlobalBlock;
-var adminToken;
+var adminToken, correctRoot = "./", trimPath;
 var reloadConfig = async function () {
 	xConsole.log("Loading configuration...");
 	// Load file
@@ -58,6 +58,9 @@ var reloadConfig = async function () {
 		CryptoJS.enc.Base64._map = realMap;
 		xConsole.log("Custom map loaded: [" + realMap + "]");
 	};
+	// Load fetch options
+	correctRoot = conf?.fetch?.data || "./";
+	trimPath = conf?.fetch?.path;
 	// Load hashing configuration
 	useHashAlgo = "SHA1", useHashLength = 20, useHashOptions = {};
 	if (conf.verify?.hash?.type) {
@@ -101,7 +104,7 @@ var reloadConfig = async function () {
 	xConsole.log("Configuration loaded.");
 };
 await reloadConfig();
-xConsole.log("Starting SnowPlum...")
+xConsole.log("Starting Thestral 0.4.0 ...")
 const server = Deno.listen({port: svrPort, hostname: svrHost});
 xConsole.log("An HTTP server is up at [http://${host}:${port}/]".alter({host: svrHost, port: svrPort}));
 // List match
@@ -137,6 +140,7 @@ var allowedMethods = ["GET"],
 mapToken = conf.params?.token || "token",
 mapType = conf.params?.type || "type",
 mapUser = conf.params?.user || "user",
+mapExpire = conf.params?.expire || "expire",
 mapSecret = conf.verify?.secret || "";
 for await (const incoming of server) {
 	(async function () {
@@ -153,8 +157,20 @@ for await (const incoming of server) {
 				if (!request.method.withAny(allowedMethods)) {
 					throw(new TypeError("Invalid method."));
 				};
+				if (trimPath) {
+					if (path.indexOf(trimPath) == 0) {
+						path = path.slice(trimPath.length);
+						if (path[0] != "/") {
+							path = "/" + path;
+						};
+					} else {
+						throw(new Error(`Not Found`));
+					};
+				};
 				if (!search.has(mapType)) {
 					throw(new Error(`No existing type. Expected type in param: ${mapType}`));
+				} else if (useTypes.indexOf(search.get(mapType)) == -1) {
+					throw(new Error(`Type not permitted.`));
 				};
 				if (!search.has(mapUser)) {
 					throw(new Error(`No existing user. Expected user in param: ${mapUser}`));
@@ -162,10 +178,22 @@ for await (const incoming of server) {
 				if (!search.has(mapToken)) {
 					throw(new Error(`No existing token. Expected token in param: ${mapToken}`));
 				};
+				if (!search.has(mapExpire)) {
+					search.set(mapExpire, null);
+				} else {
+					let expiration = parseInt(`${"0x0" + search.get(mapExpire)}`);
+					if (expiration < Date.now()) {
+						throw(new Error(`Expired link.`));
+					};
+				};
 				var idUser = search.get(mapUser);
 				var idType = search.get(mapType);
 				var idToken = search.get(mapToken);
+				var idExpire = search.get(mapExpire);
 				var seedOTxt = `${idType},${idUser},${mapSecret}`;
+				if (idExpire) {
+					seedOTxt += `,${idExpire}`;
+				};
 				var seedTxt = CryptoJS.enc.Base64.stringify(CryptoJS.enc.Hex.parse(CryptoJS[useHashAlgo](seedOTxt, useHashOptions).toString())).trimEnd().slice(0, useHashLength);
 				if (seedTxt != idToken) {
 					xConsole.error(`Original: [${seedOTxt}],Expected token: ${seedTxt}`);
@@ -197,12 +225,12 @@ for await (const incoming of server) {
 							};
 						};
 					} else {
-						body = await Deno.readTextFile("./" + idType + path);
+						body = await Deno.readTextFile(correctRoot + idType + path);
 						status = 200;
 					};
 				} catch (err) {
-					body = "400 Internal Error";
-					status = 400;
+					body = "500 Internal Error";
+					status = 500;
 					xConsole.error(new Error(`Requested ${request.method} with internal error: .${path}\n${err.stack}`));
 				};
 			} catch (repError) {

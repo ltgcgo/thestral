@@ -1,1 +1,0 @@
-Congratulations! You have successfully configured this SnowPlum instance.
