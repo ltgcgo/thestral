@@ -1,0 +1,29 @@
+#!/bin/bash
+curDir="."
+srcDir=$1
+destDir=$2
+function recurseDir () {
+	curDir="$curDir/$1"
+	echo "Entered directory: $curDir"
+	ls -1 $curDir | while IFS= read -r curFile; do
+		curPath="$curDir/$curFile"
+		tarPath="${curPath/$srcDir/$destDir}"
+		if [ -d "$curDir/$curFile" ] ; then
+			mkdir -p "$tarPath"
+			recurseDir "$curFile"
+		else
+			printf "Building file $curDir/$curFile ... "
+			base64 -w 0 "$curPath" > "$tarPath" && echo "OK."
+		fi
+	done
+}
+if [ -e "$1" ] ; then
+	if [ -e "$2" ] ; then
+		recurseDir "$1" "$destDir"
+	else
+		echo "Output directory not found."
+	fi
+else
+	echo "Source directory not found."
+fi
+exit
