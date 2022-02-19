@@ -39,7 +39,7 @@ xConsole.log("Preparing configuration...");
 // Config global vars
 var conf = {};
 var useHashAlgo, useHashLength, useHashOptions, useTypes, compiledGlobalBlock;
-var adminToken, correctRoot = "./", trimPath;
+var adminToken, correctRoot = "./", trimPath, bannedTokens = [];
 var reloadConfig = async function () {
 	xConsole.log("Loading configuration...");
 	// Load file
@@ -101,10 +101,27 @@ var reloadConfig = async function () {
 	// Load blocklists
 	xConsole.log("Importing global blocklist...");
 	compiledGlobalBlock = new Set(hardcodedBlocks);
+	// Load banned tokens
+	try {
+		let rawBanList = (await Deno.readTextFile("./bannedTokens.conf")).split("\n");
+		rawBanList.forEach(function (e) {
+			let line = e.trim();
+			if (line[0] == "#") {
+				// Ignore commented line
+			} else if (line.length == 0) {
+				// Ignore blank line
+			} else {
+				bannedTokens.push(e);
+			};
+		});
+		xConsole.log(`Ban list (${rawBanList.length} lines, ${bannedTokens.length} active) loaded.`);
+	} catch (err) {
+		xConsole.error("Cannot load banned tokens.\n" + err.stack);
+	};
 	xConsole.log("Configuration loaded.");
 };
 await reloadConfig();
-xConsole.log("Starting Thestral 0.4.0 ...")
+xConsole.log("Starting Thestral 0.5.0 ...")
 const server = Deno.listen({port: svrPort, hostname: svrHost});
 xConsole.log("An HTTP server is up at [http://${host}:${port}/]".apply({host: svrHost, port: svrPort}));
 // List match
@@ -201,6 +218,8 @@ for await (const incoming of server) {
 				if (seedTxt != idToken) {
 					xConsole.error(`Original: [${seedOTxt}],Expected token: ${seedTxt}`);
 					throw(new Error("Used invalid token."));
+				} else if (bannedTokens.indexOf(idToken) != -1) {
+					throw(new Error("Your access is banned."));
 				};
 				let reqBlocked = matchList(path, [...Array.from(compiledGlobalBlock)]);
 				if (reqBlocked.length > 0) {
