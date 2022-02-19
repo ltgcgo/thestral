@@ -3,7 +3,9 @@
 		"type": "type",
 		"user": "user",
 		"expire": "expire",
-		"token": "token"
+		"token": "token",
+		"map": "map",
+		"args": "args"
 	},
 	"verify": {
 		"secret": "1145141919810",

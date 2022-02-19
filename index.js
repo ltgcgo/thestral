@@ -141,7 +141,9 @@ mapToken = conf.params?.token || "token",
 mapType = conf.params?.type || "type",
 mapUser = conf.params?.user || "user",
 mapExpire = conf.params?.expire || "expire",
-mapSecret = conf.verify?.secret || "";
+mapSecret = conf.verify?.secret || "",
+mapArgument = conf.params?.args || "args",
+mapTemplate = conf.params?.map || "map";
 for await (const incoming of server) {
 	(async function () {
 		const connection = Deno.serveHttp(incoming);
@@ -151,6 +153,7 @@ for await (const incoming of server) {
 			let uri = new URL(request.url);
 			let path = uri.pathname;
 			let search = uri.search.parseMap();
+			let templateObject = {};
 			// Default reply message
 			let body = "403 Forbidden", status = 403;
 			try {
@@ -158,13 +161,13 @@ for await (const incoming of server) {
 					throw(new TypeError("Invalid method."));
 				};
 				if (trimPath) {
+					if (path[0] != "/") {
+						path = "/" + path;
+					};
 					if (path.indexOf(trimPath) == 0) {
 						path = path.slice(trimPath.length);
-						if (path[0] != "/") {
-							path = "/" + path;
-						};
 					} else {
-						throw(new Error(`Not Found`));
+						//throw(new Error(`Not Found`));
 					};
 				};
 				if (!search.has(mapType)) {
@@ -226,6 +229,20 @@ for await (const incoming of server) {
 						};
 					} else {
 						body = await Deno.readTextFile(correctRoot + idType + path);
+						let args, templ;
+						if (search.has(mapTemplate)) {
+							templ = await Deno.readTextFile("./map/" + search.get(mapTemplate) + ".json");
+						};
+						if (templ) {
+							templateObject = JSON.parse(templ);
+						};
+						if (search.has(mapArgument)) {
+							args = search.get(mapArgument).split(",");
+							templateObject.args = args;
+						};
+						if (args || templ) {
+							body = body.apply(templateObject);
+						};
 						status = 200;
 					};
 				} catch (err) {

@@ -250,7 +250,11 @@ String.prototype.parseMap = function () {
 	let objectPath = function (path, obj) {
 		let result = obj, paths = path.split(".");
 		paths.forEach(function (e) {
-			result = result[e];
+			if (Compard.able(result, result[e]) < 2) {
+				result = "${" + path + "}";
+			} else {
+				result = result[e];
+			};
 		});
 		return result;
 	};
