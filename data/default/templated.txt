@@ -1,0 +1,4 @@
+This line is not with templates.
+This line is with ${args.0}.
+This line is with ${args.0} and ${args.1}.
+This ${pear} is with ${apple.{args.0}} and ${apple.{args.1}}.

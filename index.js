@@ -18,8 +18,8 @@ xConsole.warn = function (text) {
 
 xConsole.log("Loading dependencies...")
 // WEBSF
-import {} from "./libs/webcirque/websf/alter.js";
-import {} from "./libs/webcirque/websf/flyover.js";
+import {} from "./libs/ltgc/lightfelt/bass.js";
+import {} from "./libs/ltgc/lightfelt/treble.js";
 // CryptoJS
 import {} from "./libs/cryptojs/cryptojs-min/crypto-js.js";
 import {} from "./libs/cryptojs/cryptojs-min/core.js";
@@ -106,7 +106,7 @@ var reloadConfig = async function () {
 await reloadConfig();
 xConsole.log("Starting Thestral 0.4.0 ...")
 const server = Deno.listen({port: svrPort, hostname: svrHost});
-xConsole.log("An HTTP server is up at [http://${host}:${port}/]".alter({host: svrHost, port: svrPort}));
+xConsole.log("An HTTP server is up at [http://${host}:${port}/]".apply({host: svrHost, port: svrPort}));
 // List match
 var matchList = function (path, list) {
 	let reqBlocked = "";

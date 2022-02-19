@@ -30,6 +30,7 @@ Number.prototype.within = function (min, max) {
 	};
 };
 // Primitive compatibility layer for array
+// Array.from must be rewritten!
 Array.from = Array.from || function (target) {
 	var ans = [];
 	if (target.length >= 0) {
