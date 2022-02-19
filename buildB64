@@ -16,6 +16,7 @@ function recurseDir () {
 			base64 -w 0 "$curPath" > "$tarPath" && echo "OK."
 		fi
 	done
+	curDir=${curDir/"/$1"/}
 }
 if [ -e "$1" ] ; then
 	if [ -e "$2" ] ; then
