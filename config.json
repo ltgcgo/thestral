@@ -5,7 +5,8 @@
 		"expire": "expire",
 		"token": "token",
 		"map": "map",
-		"args": "args"
+		"args": "args",
+		"ext": "ext"
 	},
 	"verify": {
 		"secret": "1145141919810",
@@ -17,7 +18,7 @@
 			}
 		},
 		"admin": [
-			"pg8TSLsRvXn1fFwh5VFcU1iQ"
+			"_thisIsHereForDemoPurposeIThink_"
 		],
 		"map": "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_ "
 	},
@@ -27,6 +28,10 @@
 	],
 	"fetch": {
 		"path": "/example",
-		"data": "./data/"
+		"data": "./data/",
+		"maps": "./map/"
+	},
+	"maps": {
+		"example": "example.json"
 	}
 }

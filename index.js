@@ -38,8 +38,8 @@ import {} from "./libs/cryptojs/cryptojs-min/sha3.js";
 xConsole.log("Preparing configuration...");
 // Config global vars
 var conf = {};
-var useHashAlgo, useHashLength, useHashOptions, useTypes, compiledGlobalBlock;
-var adminToken, correctRoot = "./", trimPath, bannedTokens = [];
+var useHashAlgo, useHashLength, useHashOptions, useTypes, compiledGlobalBlock, realMap;
+var adminToken, correctRoot = "./", trimPath, bannedTokens = [], loadedMaps = {};
 var reloadConfig = async function () {
 	xConsole.log("Loading configuration...");
 	// Load file
@@ -54,7 +54,7 @@ var reloadConfig = async function () {
 	// Load map
 	CryptoJS.enc.Base64._map = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_ ";
 	if (conf.verify?.map?.length > 63) {
-		var realMap = conf.verify.map.slice(0, 65);
+		realMap = conf.verify.map.slice(0, 65);
 		CryptoJS.enc.Base64._map = realMap;
 		xConsole.log("Custom map loaded: [" + realMap + "]");
 	};
@@ -118,10 +118,30 @@ var reloadConfig = async function () {
 	} catch (err) {
 		xConsole.error("Cannot load banned tokens.\n" + err.stack);
 	};
+	// Load substitution maps
+	try {
+		let mapPaths = conf?.fetch?.maps || "./map/";
+		let mapFiles = conf?.maps;
+		if (mapFiles) {
+			let total = 0, loaded = 0;
+			for (let name in mapFiles) {
+				try {
+					loadedMaps[name] = JSON.parse(await Deno.readTextFile(`${mapPaths}${mapFiles[name]}`));
+					loaded ++;
+				} catch (err) {
+					xConsole.error(err.stack);
+				};
+				total ++;
+			};
+			xConsole.log(`Substitution maps (${total} files, ${loaded} active) are loaded.`);
+		};
+	} catch (err) {
+		xConsole.error("Cannot load substitution maps.\n" + err.stack);
+	};
 	xConsole.log("Configuration loaded.");
 };
 await reloadConfig();
-xConsole.log("Starting Thestral 0.5.0 ...")
+xConsole.log("Starting Thestral 0.5.1 ...")
 const server = Deno.listen({port: svrPort, hostname: svrHost});
 xConsole.log("An HTTP server is up at [http://${host}:${port}/]".apply({host: svrHost, port: svrPort}));
 // List match
@@ -160,7 +180,8 @@ mapUser = conf.params?.user || "user",
 mapExpire = conf.params?.expire || "expire",
 mapSecret = conf.verify?.secret || "",
 mapArgument = conf.params?.args || "args",
-mapTemplate = conf.params?.map || "map";
+mapTemplate = conf.params?.map || "map",
+mapExtras = conf.params?.ext || "ext";
 for await (const incoming of server) {
 	(async function () {
 		const connection = Deno.serveHttp(incoming);
@@ -170,7 +191,6 @@ for await (const incoming of server) {
 			let uri = new URL(request.url);
 			let path = uri.pathname;
 			let search = uri.search.parseMap();
-			let templateObject = {};
 			// Default reply message
 			let body = "403 Forbidden", status = 403;
 			try {
@@ -186,6 +206,9 @@ for await (const incoming of server) {
 					} else {
 						//throw(new Error(`Not Found`));
 					};
+				};
+				if (Array.from(search).length == 0) {
+					throw(new Error("Known error for unexpected repeat execution, or no arguments are provided."));
 				};
 				if (!search.has(mapType)) {
 					throw(new Error(`No existing type. Expected type in param: ${mapType}`));
@@ -214,6 +237,8 @@ for await (const incoming of server) {
 				if (idExpire) {
 					seedOTxt += `,${idExpire}`;
 				};
+				// Force real map
+				CryptoJS.enc.Base64._map = realMap;
 				var seedTxt = CryptoJS.enc.Base64.stringify(CryptoJS.enc.Hex.parse(CryptoJS[useHashAlgo](seedOTxt, useHashOptions).toString())).trimEnd().slice(0, useHashLength);
 				if (seedTxt != idToken) {
 					xConsole.error(`Original: [${seedOTxt}],Expected token: ${seedTxt}`);
@@ -248,19 +273,28 @@ for await (const incoming of server) {
 						};
 					} else {
 						body = await Deno.readTextFile(correctRoot + idType + path);
-						let args, templ;
+						let args, extras = [], templateObject = {};
 						if (search.has(mapTemplate)) {
-							templ = await Deno.readTextFile("./map/" + search.get(mapTemplate) + ".json");
+							templateObject = loadedMaps[search.get(mapTemplate)] || {};
 						};
-						if (templ) {
-							templateObject = JSON.parse(templ);
+						if (search.has(mapExtras)) {
+							extras = search.get(mapExtras).split(",");
 						};
 						if (search.has(mapArgument)) {
 							args = search.get(mapArgument).split(",");
 							templateObject.args = args;
 						};
-						if (args || templ) {
+						// Force universal map
+						CryptoJS.enc.Base64._map = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+						if (extras.includes("de")) {
+							body = CryptoJS.enc.Utf8.stringify(CryptoJS.enc.Base64.parse(body));
+						};
+						if (args) {
 							body = body.apply(templateObject);
+							delete templateObject.args;
+						};
+						if (extras.includes("re")) {
+							body = CryptoJS.enc.Base64.stringify(CryptoJS.enc.Utf8.parse(body)).trim();
 						};
 						status = 200;
 					};
